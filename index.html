@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unbeatable Tic Tac Toe AI</title>
+    <title>Rush Tic Tac Toe Tournament</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -42,6 +42,11 @@
             font-size: 1.5em;
             margin: 10px 0;
         }
+        #timer {
+            font-size: 1.2em;
+            color: red;
+            margin: 5px 0;
+        }
         #controls {
             margin-bottom: 20px;
         }
@@ -55,65 +60,104 @@
 </head>
 <body>
     <div id="game-container">
-        <h1>Unbeatable Tic Tac Toe AI</h1>
+        <h1>Rush Tic Tac Toe Tournament</h1>
         <div id="controls">
-            <button id="player-start">Start as Player (X)</button>
-            <button id="ai-start">Let AI Start (X)</button>
+            <button id="start-game">Random Start</button>
+            <button id="ai-first">AI Starts First</button>
             <button id="reset" style="display: none;">Reset Game</button>
         </div>
         <div id="board"></div>
         <div id="status"></div>
+        <div id="timer"></div>
     </div>
 
     <script>
-        const board = document.getElementById('board');
-        const status = document.getElementById('status');
-        const playerStartBtn = document.getElementById('player-start');
-        const aiStartBtn = document.getElementById('ai-start');
+        const boardEl = document.getElementById('board');
+        const statusEl = document.getElementById('status');
+        const timerEl = document.getElementById('timer');
+        const startBtn = document.getElementById('start-game');
+        const aiFirstBtn = document.getElementById('ai-first');
         const resetBtn = document.getElementById('reset');
 
         let cells = [];
-        let currentPlayer = 'X';
         let gameBoard = Array(9).fill(null);
         let isGameOver = false;
-        let humanSymbol = 'X';
-        let aiSymbol = 'O';
-        let isHumanTurn = true;
+        let humanSymbol;
+        let aiSymbol;
+        let isHumanTurn;
+        let timerTimeout;
+        const moveTimeLimit = 3000; // 3 seconds
 
         function initBoard() {
-            board.innerHTML = '';
+            boardEl.innerHTML = '';
             cells = [];
             for (let i = 0; i < 9; i++) {
                 const cell = document.createElement('div');
                 cell.classList.add('cell');
                 cell.dataset.index = i;
                 cell.addEventListener('click', handleClick);
-                board.appendChild(cell);
+                boardEl.appendChild(cell);
                 cells.push(cell);
             }
         }
 
-        function startGame(humanStarts) {
+        function startGame(specificHumanStarts = null) {
             gameBoard = Array(9).fill(null);
             isGameOver = false;
             initBoard();
-            playerStartBtn.style.display = 'none';
-            aiStartBtn.style.display = 'none';
+            startBtn.style.display = 'none';
+            aiFirstBtn.style.display = 'none';
             resetBtn.style.display = 'inline-block';
-            status.textContent = '';
+            statusEl.textContent = '';
+            timerEl.textContent = '';
+
+            // Determine who goes first
+            let humanStarts;
+            if (specificHumanStarts !== null) {
+                humanStarts = specificHumanStarts;
+            } else {
+                humanStarts = Math.random() < 0.5;
+            }
+
+            // Randomize symbols: first player is X or O
+            const firstIsX = Math.random() < 0.5;
+            const firstSymbol = firstIsX ? 'X' : 'O';
+            const secondSymbol = firstIsX ? 'O' : 'X';
 
             if (humanStarts) {
-                humanSymbol = 'X';
-                aiSymbol = 'O';
+                humanSymbol = firstSymbol;
+                aiSymbol = secondSymbol;
                 isHumanTurn = true;
-                status.textContent = 'Your turn (X)';
+                statusEl.textContent = `Your turn (${humanSymbol})`;
+                startTimer();
             } else {
-                humanSymbol = 'O';
-                aiSymbol = 'X';
+                humanSymbol = secondSymbol;
+                aiSymbol = firstSymbol;
                 isHumanTurn = false;
-                status.textContent = 'AI\'s turn (X)';
+                statusEl.textContent = `AI's turn (${aiSymbol})`;
                 aiMove();
             }
+        }
+
+        function startTimer() {
+            let timeLeft = moveTimeLimit / 1000;
+            timerEl.textContent = `Time left: ${timeLeft}s`;
+            const timerInterval = setInterval(() => {
+                timeLeft -= 1;
+                timerEl.textContent = `Time left: ${timeLeft}s`;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                }
+            }, 1000);
+
+            timerTimeout = setTimeout(() => {
+                clearInterval(timerInterval);
+                if (!isGameOver && isHumanTurn) {
+                    isGameOver = true;
+                    statusEl.textContent = "Time's up! AI wins!";
+                    timerEl.textContent = '';
+                }
+            }, moveTimeLimit);
         }
 
         function handleClick(e) {
@@ -121,25 +165,91 @@
             const index = e.target.dataset.index;
             if (gameBoard[index]) return;
 
+            clearTimeout(timerTimeout);
+            timerEl.textContent = '';
+
             gameBoard[index] = humanSymbol;
             e.target.textContent = humanSymbol;
             checkGameState();
             if (!isGameOver) {
                 isHumanTurn = false;
-                status.textContent = `AI's turn (${aiSymbol})`;
+                statusEl.textContent = `AI's turn (${aiSymbol})`;
                 aiMove();
             }
         }
 
         function aiMove() {
             if (isGameOver) return;
-            const bestMove = minimax(gameBoard, aiSymbol).index;
+            const bestMove = getBestMove(gameBoard, aiSymbol);
             gameBoard[bestMove] = aiSymbol;
             cells[bestMove].textContent = aiSymbol;
             checkGameState();
             if (!isGameOver) {
                 isHumanTurn = true;
-                status.textContent = `Your turn (${humanSymbol})`;
+                statusEl.textContent = `Your turn (${humanSymbol})`;
+                startTimer();
+            }
+        }
+
+        function getBestMove(board, player) {
+            let bestScore = -Infinity;
+            let bestIndex = -1;
+            let alpha = -Infinity;
+            let beta = Infinity;
+            for (let i = 0; i < 9; i++) {
+                if (board[i] === null) {
+                    board[i] = player;
+                    let score = minimaxAB(board, getOpponent(player), alpha, beta);
+                    board[i] = null;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestIndex = i;
+                    }
+                    alpha = Math.max(alpha, score);
+                    if (alpha >= beta) {
+                        break;
+                    }
+                }
+            }
+            return bestIndex;
+        }
+
+        function getOpponent(player) {
+            return player === aiSymbol ? humanSymbol : aiSymbol;
+        }
+
+        function minimaxAB(board, player, alpha, beta) {
+            const winner = checkWinner(board);
+            if (winner === aiSymbol) return 10;
+            if (winner === humanSymbol) return -10;
+            if (!board.includes(null)) return 0;
+
+            if (player === aiSymbol) { // maximizing
+                let maxScore = -Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (board[i] === null) {
+                        board[i] = player;
+                        let score = minimaxAB(board, getOpponent(player), alpha, beta);
+                        board[i] = null;
+                        maxScore = Math.max(maxScore, score);
+                        alpha = Math.max(alpha, maxScore);
+                        if (alpha >= beta) break;
+                    }
+                }
+                return maxScore;
+            } else { // minimizing
+                let minScore = Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (board[i] === null) {
+                        board[i] = player;
+                        let score = minimaxAB(board, getOpponent(player), alpha, beta);
+                        board[i] = null;
+                        minScore = Math.min(minScore, score);
+                        beta = Math.min(beta, minScore);
+                        if (alpha >= beta) break;
+                    }
+                }
+                return minScore;
             }
         }
 
@@ -148,15 +258,13 @@
             if (winner) {
                 isGameOver = true;
                 if (winner === humanSymbol) {
-                    status.textContent = 'You win!';
-                } else if (winner === aiSymbol) {
-                    status.textContent = 'AI wins!';
+                    statusEl.textContent = 'You win!';
                 } else {
-                    status.textContent = 'It\'s a draw!';
+                    statusEl.textContent = 'AI wins!';
                 }
             } else if (!gameBoard.includes(null)) {
                 isGameOver = true;
-                status.textContent = 'It\'s a draw!';
+                statusEl.textContent = 'It\'s a draw!';
             }
         }
 
@@ -175,63 +283,16 @@
             return null;
         }
 
-        function minimax(newBoard, player) {
-            const availSpots = newBoard.reduce((acc, val, idx) => val === null ? [...acc, idx] : acc, []);
-
-            if (checkWinner(newBoard) === aiSymbol) {
-                return { score: 10 };
-            } else if (checkWinner(newBoard) === humanSymbol) {
-                return { score: -10 };
-            } else if (availSpots.length === 0) {
-                return { score: 0 };
-            }
-
-            const moves = [];
-            for (let i = 0; i < availSpots.length; i++) {
-                const move = {};
-                move.index = availSpots[i];
-                newBoard[availSpots[i]] = player;
-
-                if (player === aiSymbol) {
-                    move.score = minimax(newBoard, humanSymbol).score;
-                } else {
-                    move.score = minimax(newBoard, aiSymbol).score;
-                }
-
-                newBoard[availSpots[i]] = null;
-                moves.push(move);
-            }
-
-            let bestMove;
-            if (player === aiSymbol) {
-                let bestScore = -Infinity;
-                for (let i = 0; i < moves.length; i++) {
-                    if (moves[i].score > bestScore) {
-                        bestScore = moves[i].score;
-                        bestMove = i;
-                    }
-                }
-            } else {
-                let bestScore = Infinity;
-                for (let i = 0; i < moves.length; i++) {
-                    if (moves[i].score < bestScore) {
-                        bestScore = moves[i].score;
-                        bestMove = i;
-                    }
-                }
-            }
-
-            return moves[bestMove];
-        }
-
-        playerStartBtn.addEventListener('click', () => startGame(true));
-        aiStartBtn.addEventListener('click', () => startGame(false));
+        startBtn.addEventListener('click', () => startGame());
+        aiFirstBtn.addEventListener('click', () => startGame(false));
         resetBtn.addEventListener('click', () => {
-            playerStartBtn.style.display = 'inline-block';
-            aiStartBtn.style.display = 'inline-block';
+            startBtn.style.display = 'inline-block';
+            aiFirstBtn.style.display = 'inline-block';
             resetBtn.style.display = 'none';
-            board.innerHTML = '';
-            status.textContent = '';
+            boardEl.innerHTML = '';
+            statusEl.textContent = '';
+            timerEl.textContent = '';
+            clearTimeout(timerTimeout);
         });
     </script>
 </body>
