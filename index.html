@@ -42,11 +42,6 @@
             font-size: 1.5em;
             margin: 10px 0;
         }
-        #timer {
-            font-size: 1.2em;
-            color: red;
-            margin: 5px 0;
-        }
         #controls {
             margin-bottom: 20px;
         }
@@ -68,13 +63,11 @@
         </div>
         <div id="board"></div>
         <div id="status"></div>
-        <div id="timer"></div>
     </div>
 
     <script>
         const boardEl = document.getElementById('board');
         const statusEl = document.getElementById('status');
-        const timerEl = document.getElementById('timer');
         const startBtn = document.getElementById('start-game');
         const aiFirstBtn = document.getElementById('ai-first');
         const resetBtn = document.getElementById('reset');
@@ -85,8 +78,6 @@
         let humanSymbol;
         let aiSymbol;
         let isHumanTurn;
-        let timerTimeout;
-        const moveTimeLimit = 3000; // 3 seconds
 
         function initBoard() {
             boardEl.innerHTML = '';
@@ -109,7 +100,6 @@
             aiFirstBtn.style.display = 'none';
             resetBtn.style.display = 'inline-block';
             statusEl.textContent = '';
-            timerEl.textContent = '';
 
             // Determine who goes first
             let humanStarts;
@@ -129,7 +119,6 @@
                 aiSymbol = secondSymbol;
                 isHumanTurn = true;
                 statusEl.textContent = `Your turn (${humanSymbol})`;
-                startTimer();
             } else {
                 humanSymbol = secondSymbol;
                 aiSymbol = firstSymbol;
@@ -139,34 +128,10 @@
             }
         }
 
-        function startTimer() {
-            let timeLeft = moveTimeLimit / 1000;
-            timerEl.textContent = `Time left: ${timeLeft}s`;
-            const timerInterval = setInterval(() => {
-                timeLeft -= 1;
-                timerEl.textContent = `Time left: ${timeLeft}s`;
-                if (timeLeft <= 0) {
-                    clearInterval(timerInterval);
-                }
-            }, 1000);
-
-            timerTimeout = setTimeout(() => {
-                clearInterval(timerInterval);
-                if (!isGameOver && isHumanTurn) {
-                    isGameOver = true;
-                    statusEl.textContent = "Time's up! AI wins!";
-                    timerEl.textContent = '';
-                }
-            }, moveTimeLimit);
-        }
-
         function handleClick(e) {
             if (!isHumanTurn || isGameOver) return;
             const index = e.target.dataset.index;
             if (gameBoard[index]) return;
-
-            clearTimeout(timerTimeout);
-            timerEl.textContent = '';
 
             gameBoard[index] = humanSymbol;
             e.target.textContent = humanSymbol;
@@ -187,7 +152,6 @@
             if (!isGameOver) {
                 isHumanTurn = true;
                 statusEl.textContent = `Your turn (${humanSymbol})`;
-                startTimer();
             }
         }
 
@@ -291,8 +255,6 @@
             resetBtn.style.display = 'none';
             boardEl.innerHTML = '';
             statusEl.textContent = '';
-            timerEl.textContent = '';
-            clearTimeout(timerTimeout);
         });
     </script>
 </body>
