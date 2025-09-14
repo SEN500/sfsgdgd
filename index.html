@@ -62,7 +62,7 @@
     <div id="game-container">
         <h1>Rush Tic Tac Toe Tournament</h1>
         <div id="controls">
-            <button id="start-game">Random Start</button>
+            <button id="start-game">Human Start</button>
             <button id="ai-first">AI Starts First</button>
             <button id="reset" style="display: none;">Reset Game</button>
         </div>
@@ -283,7 +283,7 @@
             return null;
         }
 
-        startBtn.addEventListener('click', () => startGame());
+        startBtn.addEventListener('click', () => startGame(true));
         aiFirstBtn.addEventListener('click', () => startGame(false));
         resetBtn.addEventListener('click', () => {
             startBtn.style.display = 'inline-block';
